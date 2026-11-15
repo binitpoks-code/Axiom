@@ -72,3 +72,38 @@ test('User Journey: login, input data, check db, and remove data', async () => {
   });
   expect(deletedCourse).toBeNull();
 });
+
+test('Error Handling: invalid inputs, missing records, and invalid sessions', async () => {
+  // 1. Querying a non-existent user profile throws expected error
+  await expect(db.getUserInfo('non_existent_user_9999')).rejects.toThrow(
+    /not found in database/
+  );
+
+  // 2. Querying a non-existent user API key throws expected error
+  await expect(db.getStoredApiKey('non_existent_user_9999')).rejects.toThrow(
+    /API key for user .* not found in database/
+  );
+
+  // 3. Resolving an unknown/invalid API key returns null
+  const unknownUser = await db.getUserIDByApiKey('invalid_unknown_api_key_0000');
+  expect(unknownUser).toBeNull();
+
+  // 4. Checking invalid/unregistered session returns false and null
+  const isInvalidSession = await db.isSessionValid('invalid_session_key_random');
+  expect(isInvalidSession).toBe(false);
+
+  const invalidSessionKey = await db.getSessionApiKey('invalid_session_key_random');
+  expect(invalidSessionKey).toBeNull();
+
+  // 5. Querying non-existent assignment returns null
+  const nonExistentAssignment = await db.getAssignment('missing_assignment_999');
+  expect(nonExistentAssignment).toBeNull();
+
+  // 6. Querying non-existent course returns empty array
+  const nonExistentCourse = await db.getCourseInformation('MISSING-COURSE-999');
+  expect(nonExistentCourse).toHaveLength(0);
+
+  // 7. Querying last sync for non-existent user returns null
+  const lastUpdate = await db.lastUpdated('non_existent_user_9999');
+  expect(lastUpdate).toBeNull();
+});
