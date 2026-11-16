@@ -36,7 +36,12 @@ function encryptedNullable(value: string | number | null | undefined): string | 
 }
 
 function decryptedNullable(value: string | null): string | null {
-  return value === null ? null : decryptValue(value);
+  if (value === null || value === undefined) return null;
+  try {
+    return decryptValue(value);
+  } catch {
+    return null;
+  }
 }
 
 export class DatabaseService {
@@ -464,13 +469,22 @@ export class DatabaseService {
         encryptedApiKey: true,
       },
     });
-    const matchingRow = rows.find(
-      (row) => row.encryptedUserId && decryptValue(row.encryptedApiKey) === apiKey
-    );
+    const matchingRow = rows.find((row) => {
+      if (!row.encryptedUserId || !row.encryptedApiKey) return false;
+      try {
+        return decryptValue(row.encryptedApiKey) === apiKey;
+      } catch {
+        return false;
+      }
+    });
     if (!matchingRow || !matchingRow.encryptedUserId) {
       return null;
     }
-    return decryptValue(matchingRow.encryptedUserId);
+    try {
+      return decryptValue(matchingRow.encryptedUserId);
+    } catch {
+      return null;
+    }
   }
 
   async getStoredApiKey(userID: string): Promise<string> {
