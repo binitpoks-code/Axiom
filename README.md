@@ -162,3 +162,19 @@ Base URL `http://localhost:5000`. All `/api` routes are `POST` with a JSON body.
 ## License
 
 See [LICENSE](LICENSE).
+
+## My Sprint 2 contribution — assignment persistence errors
+
+For my Sprint 2 contribution, I used Codex to help inspect assignment database error handling. We found that `pushAssignments()` logged failed Prisma writes but swallowed the error, so callers could continue and record a successful assignment sync. The fix rethrows the error, which stops the callers before their subsequent sync update. Successful response shapes stay the same. The assignment API handlers now return generic HTTP 500 errors instead of exposing internal exception details, and log a fixed message identifying which request failed without including request credentials.
+
+Codex added and ran focused mocked Vitest tests for successful writes, early and later write failures, synchronization ordering, both assignment callers, cache hits, earlier authentication updates, and safe API error responses. All 18 tests across three files passed. These tests used mocks and did not connect to live PostgreSQL or Canvas. They test the route handlers with mocked Express request/response objects, not a running HTTP server. `git diff --check` passed. Full backend TypeScript validation remains blocked by missing backend dependencies and types; passing these tests does not establish a clean typecheck.
+
+Partial writes remain possible because the batch is not transactional. This change also does not undo an earlier authentication sync timestamp. Existing lower-level database error logging is unchanged; the new route logs contain fixed messages only.
+
+The exact command Codex used from `apps/api/backend` is below. It uses the already-cached Vitest 3.0.7 installation on my machine, with the project's Node environment and globals settings. The cache path is machine-specific; this command does not install packages.
+
+```powershell
+node --input-type=module -e "import { startVitest } from 'file:///C:/Users/binit/AppData/Local/npm-cache/_npx/ed553255366feb35/node_modules/vitest/dist/node.js'; const context = await startVitest('test', ['src/services/tests/assignmentPersistence.test.ts', 'src/services/tests/assignmentSynchronization.test.ts', 'src/routes/tests/assignmentErrors.test.ts'], { config: false, watch: false, environment: 'node', globals: true, alias: { vitest: 'C:/Users/binit/AppData/Local/npm-cache/_npx/ed553255366feb35/node_modules/vitest/dist/index.js' } }); await context.close();"
+```
+
+AI assistance: Codex inspected the code, drafted these changes and tests, ran the checks described here, and helped write this summary. I selected and approved the scope and am reviewing the result before submission. This acknowledgement does not replace any additional disclosure required by the course.
