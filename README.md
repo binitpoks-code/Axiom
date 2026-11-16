@@ -163,18 +163,34 @@ Base URL `http://localhost:5000`. All `/api` routes are `POST` with a JSON body.
 
 See [LICENSE](LICENSE).
 
-## My Sprint 2 contribution — assignment persistence errors
+For **Sprint 2**, I reviewed Axiom's backend to see how assignment data was being saved and how database errors were handled. I found that pushAssignments() was logging failed Prisma database writes without passing the errors back. This meant Axiom could still report a successful assignment sync even when saving failed.
 
-For my Sprint 2 contribution, I used Codex to help inspect assignment database error handling. We found that `pushAssignments()` logged failed Prisma writes but swallowed the error, so callers could continue and record a successful assignment sync. The fix rethrows the error, which stops the callers before their subsequent sync update. Successful response shapes stay the same. The assignment API handlers now return generic HTTP 500 errors instead of exposing internal exception details, and log a fixed message identifying which request failed without including request credentials.
+To fix this, I updated the function to throw the error instead of silently ignoring it. I also improved the assignment API error handling so internal database details aren't exposed to users. The successful responses remain unchanged.
 
-Codex added and ran focused mocked Vitest tests for successful writes, early and later write failures, synchronization ordering, both assignment callers, cache hits, earlier authentication updates, and safe API error responses. All 18 tests across three files passed. These tests used mocks and did not connect to live PostgreSQL or Canvas. They test the route handlers with mocked Express request/response objects, not a running HTTP server. `git diff --check` passed. Full backend TypeScript validation remains blocked by missing backend dependencies and types; passing these tests does not establish a clean typecheck.
+Testing and Results
 
-Partial writes remain possible because the batch is not transactional. This change also does not undo an earlier authentication sync timestamp. Existing lower-level database error logging is unchanged; the new route logs contain fixed messages only.
+I added automated tests to check successful assignment saves, failed writes, synchronization order, cached assignments, and API error handling.
 
-The exact command Codex used from `apps/api/backend` is below. It uses the already-cached Vitest 3.0.7 installation on my machine, with the project's Node environment and globals settings. The cache path is machine-specific; this command does not install packages.
+All 18 tests passed across three Vitest test files.
 
-```powershell
-node --input-type=module -e "import { startVitest } from 'file:///C:/Users/binit/AppData/Local/npm-cache/_npx/ed553255366feb35/node_modules/vitest/dist/node.js'; const context = await startVitest('test', ['src/services/tests/assignmentPersistence.test.ts', 'src/services/tests/assignmentSynchronization.test.ts', 'src/routes/tests/assignmentErrors.test.ts'], { config: false, watch: false, environment: 'node', globals: true, alias: { vitest: 'C:/Users/binit/AppData/Local/npm-cache/_npx/ed553255366feb35/node_modules/vitest/dist/index.js' } }); await context.close();"
-```
+git diff --check passed.
 
-AI assistance: Codex inspected the code, drafted these changes and tests, ran the checks described here, and helped write this summary. I selected and approved the scope and am reviewing the result before submission. This acknowledgement does not replace any additional disclosure required by the course.
+The tests used mocked Prisma, Canvas, and Express objects, without connecting to a live database or server.
+
+Full TypeScript validation couldn't be completed because some backend dependencies and type definitions weren't installed.
+
+Known Limitations
+
+Assignment batches still aren't transactional, meaning some assignments might save before a later one fails. The change also doesn't reverse synchronization timestamps already updated during authentication.
+
+Running the Tests
+
+From apps/api/backend, the tests were run using a locally cached Vitest 3.0.7 installation. The command used a machine-specific cache path, so other developers should use the project's configured Vitest setup after installing dependencies.
+
+AI Assistance
+
+I used AI assistance to inspect the backend, help implement the fix, generate tests, and run validation checks. I reviewed and approved the changes before committing them.
+
+Outcome
+
+The assignment synchronization process now properly reports database write failures instead of continuing as if everything saved successfully. The API also handles these failures without exposing internal error details.
